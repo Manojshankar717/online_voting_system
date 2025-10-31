@@ -1,8 +1,12 @@
-import mysql from 'mysql2/promise'
+import mysql from 'mysql2/promise';
+import dotenv from 'dotenv';
+dotenv.config();
 
-const databaseUrl = process.env.DATABASE_URL
-export const DEMO_MODE = String(process.env.DEMO_MODE || '').toLowerCase() === 'true'
+export const pool = await mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
+});
 
-export const pool = DEMO_MODE
-	? null
-	: mysql.createPool(databaseUrl)
+export const DEMO_MODE = false;
