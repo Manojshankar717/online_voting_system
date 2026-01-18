@@ -58,6 +58,38 @@ export async function verifyEmailOtpController(req, res) {
   return res.json({ message: 'Email verified successfully!' });
 }
 
+// ----------------- Request OTP (general purpose) -----------------
+export async function requestOtpController(req, res) {
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ message: 'Missing email' });
+
+  const [rows] = await pool.query('SELECT id, is_verified FROM users WHERE email = ?', [email]);
+  const user = rows[0];
+  if (!user) return res.status(404).json({ message: 'No account found for email' });
+  
+  const otp = generateOtp();
+  saveOtp(email, otp);
+  await sendEmail(email, 'Your OTP', `Your OTP is: ${otp}`);
+
+  return res.json({ message: 'OTP sent to your email.' });
+}
+
+// ----------------- Verify OTP (general purpose) -----------------
+export async function verifyOtpController(req, res) {
+  const { email, otp } = req.body || {};
+  if (!email || !otp) return res.status(400).json({ message: 'Missing email or OTP' });
+
+  const ok = verifyOtp(email, String(otp));
+  if (!ok) return res.status(401).json({ message: 'Invalid OTP' });
+
+  // Optionally, return user info here
+  const [rows] = await pool.query('SELECT id, name, email, role, is_verified FROM users WHERE email = ?', [email]);
+  const user = rows[0];
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  return res.json({ message: 'OTP verified successfully!', user });
+}
+
 // ----------------- Request Login OTP -----------------
 export async function requestLoginOtpController(req, res) {
   const { email } = req.body || {};

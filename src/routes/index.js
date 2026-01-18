@@ -1,80 +1,16 @@
-import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import { router as apiRouter } from './routes/index.js';
-import { globalLimiter } from './middlewares/rateLimiter.js';
+import { Router } from 'express';
 
-// Import auth routes
-import authRoutes from './routes/authRoutes.js';
+// Import individual route modules
+import { router as authRouter } from './auth.js';
+import { router as electionRouter } from './elections.js';
+import { router as adminRouter } from './admin.js';
 
-const app = express();
+export const router = Router();
 
-// ----------------- Security middleware -----------------
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", "https:"],
-      },
-    },
-  })
-);
+// Mount individual route modules
+router.use('/auth', authRouter);
+router.use('/elections', electionRouter);
+router.use('/admin', adminRouter);
 
-// ----------------- Rate limiting -----------------
-app.use(globalLimiter);
-
-// ----------------- CORS configuration -----------------
-app.use(
-  cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-);
-
-// ----------------- Logging -----------------
-app.use(morgan('combined'));
-
-// ----------------- Body parsing -----------------
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// ----------------- Health check -----------------
-app.get('/health', (_req, res) => {
-  res.json({
-    status: 'ok',
-    demo: String(process.env.DEMO_MODE || '').toLowerCase() === 'true',
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// ----------------- Mount routes -----------------
-app.use('/api', apiRouter);      // existing routes
-app.use('/api/auth', authRoutes); // auth routes
-
-// ----------------- 404 handler -----------------
-app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
-});
-
-// ----------------- Error handling middleware -----------------
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    error: process.env.NODE_ENV === 'production' ? 'Something went wrong!' : err.message,
-  });
-});
-
-// ----------------- Start server -----------------
-const port = process.env.PORT || 4000;
-app.listen(port, () => {
-  console.log(`🚀 API listening on port ${port}`);
-  console.log(`📊 Demo mode: ${process.env.DEMO_MODE || 'false'}`);
-  console.log(`🌐 CORS origin: ${process.env.CORS_ORIGIN || 'http://localhost:5173'}`);
-});
+// Export the router
+export default router;

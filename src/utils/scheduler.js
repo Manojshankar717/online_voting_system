@@ -15,17 +15,21 @@ async function endElection(electionId) {
 
 // Schedule a job (example: every day at midnight check elections)
 cron.schedule('0 0 * * *', async () => {
-  const [elections] = await pool.query(
-    'SELECT id, start_time, end_time, status FROM elections WHERE status != "closed"'
-  );
+  try {
+    const [elections] = await pool.query(
+      'SELECT id, starts_at, ends_at, status FROM elections WHERE status != "completed"'
+    );
 
-  const now = new Date();
-  elections.forEach(async (election) => {
-    if (new Date(election.start_time) <= now && election.status === 'pending') {
-      await startElection(election.id);
+    const now = new Date();
+    for (const election of elections) {
+      if (new Date(election.starts_at) <= now && election.status === 'pending') {
+        await startElection(election.id);
+      }
+      if (new Date(election.ends_at) <= now && election.status === 'active') {
+        await endElection(election.id);
+      }
     }
-    if (new Date(election.end_time) <= now && election.status === 'active') {
-      await endElection(election.id);
-    }
-  });
+  } catch (error) {
+    console.error('Error in scheduled election check:', error);
+  }
 });
